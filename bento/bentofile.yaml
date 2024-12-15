@@ -1,0 +1,13 @@
+service: "service:SpyAircraftDetector"
+labels:
+  project: itmo_mlops_2024
+  stage: dev
+include:
+  - "service.py"
+python:
+    packages:
+    - torch
+    - torchvision
+    - pillow
+    - pandas
+    - numpy
