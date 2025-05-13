@@ -4,25 +4,28 @@ from xml.etree import ElementTree as ET
 
 def get_processed_annotations(images_set: str, xml_path: str) -> pd.DataFrame:
     """
-        Creates a pandas dataframe for given image set and matchable markup
-        :param images_set: path to the txt-file with image indexes
-        :param xml_path: path to the current directory that contains xml-markup
+    Creates a pandas dataframe for given image set and matchable markup
+    :param images_set: path to the txt-file with image indexes
+    :param xml_path: path to the current directory that contains xml-markup
     """
     with open(file=images_set, mode="r") as file:
         f = file.read().split("\n")
 
         return pd.concat(
-            [parse_xml_anns(path=f"{xml_path}/{img_id}.xml", img_id=img_id) for img_id in f],
-            ignore_index=True
+            [
+                parse_xml_anns(path=f"{xml_path}/{img_id}.xml", img_id=img_id)
+                for img_id in f
+            ],
+            ignore_index=True,
         )
 
 
 def parse_xml_anns(path: str, img_id: str) -> pd.DataFrame:
     """
-        Function that extracts and transforms annotations from
-        given XML files with detection markup (bboxes)
-        :param path: path to the current directory that contains xml-markup
-        :param img_id: sample index to match markup file
+    Function that extracts and transforms annotations from
+    given XML files with detection markup (bboxes)
+    :param path: path to the current directory that contains xml-markup
+    :param img_id: sample index to match markup file
     """
 
     anns = {
@@ -44,10 +47,10 @@ def parse_xml_anns(path: str, img_id: str) -> pd.DataFrame:
         label = o.find("name").text
         bbox = o.find("bndbox")
 
-        xmin = int(bbox.find('xmin').text)
-        ymin = int(bbox.find('ymin').text)
-        xmax = int(bbox.find('xmax').text)
-        ymax = int(bbox.find('ymax').text)
+        xmin = int(bbox.find("xmin").text)
+        ymin = int(bbox.find("ymin").text)
+        xmax = int(bbox.find("xmax").text)
+        ymax = int(bbox.find("ymax").text)
 
         anns["image_id"].append(int(img_id))
         anns["labels"].append(label)

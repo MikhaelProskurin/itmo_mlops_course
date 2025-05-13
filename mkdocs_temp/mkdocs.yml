@@ -1,0 +1,16 @@
+site_name: AutoDocs
+site_dir: C:\Users\mikhail_dev\Desktop\OSA\itmo_mlops_course\site
+theme:
+    name: material
+plugins:
+    - search
+    - mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                paths: [C:\Users\mikhail_dev\Desktop\OSA\itmo_mlops_course]
+                options:
+                    show_source: true
+                    docstring_style: google
+nav:
+    - Home: index.md
