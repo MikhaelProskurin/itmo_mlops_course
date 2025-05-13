@@ -19,21 +19,37 @@ from PIL import Image, ImageDraw
 class Experiment:
 
     def __init__(
-            self,
-            dataset: torch.utils.data.Dataset,
-            model: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            lr_scheduler: torch.optim.lr_scheduler,
-            logger: Logger,
-            config: dict
+        self,
+        dataset: torch.utils.data.Dataset,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        lr_scheduler: torch.optim.lr_scheduler,
+        logger: Logger,
+        config: dict,
     ) -> None:
+        """
+        Initializes the Trainer with training components.
+
+            Args:
+                dataset: The dataset to be used for training.
+                model: The neural network model to train.
+                optimizer: The optimizer used for updating model parameters.
+                lr_scheduler: The learning rate scheduler.
+                logger: A logger object for tracking training progress.
+                config: A dictionary containing configuration parameters.
+
+            Returns:
+                None
+        """
         self.dataset = dataset
         self.model = model
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.logger = logger
         self.collate_fn = collate_fn
-        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
         self.config = config
 
     """
@@ -44,14 +60,16 @@ class Experiment:
 
     def train(self, dataloader: DataLoader) -> None:
         """
-            Implements network training process
-            :param dataloader: PyTorch standard DataLoader which contains custom dataset
+        Implements network training process
+        :param dataloader: PyTorch standard DataLoader which contains custom dataset
         """
 
         # setting some counters and such things
         itr = 1
         start_time = time()
-        model_name, optim_name, checkpoint_path, num_epochs = self.get_constants_from_config()
+        model_name, optim_name, checkpoint_path, num_epochs = (
+            self.get_constants_from_config()
+        )
 
         # switching model into train mode
         self.model.to(self.device)
@@ -73,7 +91,9 @@ class Experiment:
 
                     images = list(image.to(self.device) for image in images)
 
-                    targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
+                    targets = [
+                        {k: v.to(self.device) for k, v in t.items()} for t in targets
+                    ]
 
                     # forward pass
                     loss_dict = self.model(images, targets)
@@ -94,7 +114,7 @@ class Experiment:
                         title="training loss",
                         series="avg batch loss",
                         iteration=itr,
-                        value=loss_hist.value
+                        value=loss_hist.value,
                     )
 
                     # logging image samples from training set
@@ -103,10 +123,9 @@ class Experiment:
                             title="image",
                             series=f"Batch of images on itr: {itr}",
                             iteration=itr,
-                            image=Image.open(f"src/data/{img}.jpg")
+                            image=Image.open(f"src/data/{img}.jpg"),
                         )
-                        for img
-                        in image_ids
+                        for img in image_ids
                     ]
 
                     self.logger.report_text(f"Iteration: {itr}")
@@ -117,7 +136,7 @@ class Experiment:
                     title="learning rate",
                     series="lr",
                     iteration=itr,
-                    value=self.lr_scheduler.get_last_lr()[0]
+                    value=self.lr_scheduler.get_last_lr()[0],
                 )
 
                 # learning rate update after each train epoch
@@ -129,30 +148,34 @@ class Experiment:
         except Union[KeyboardInterrupt, TypeError, Exception]:
 
             torch.save(
-                self.model.state_dict(),
-                f=f"{checkpoint_path}/{model_name}_{itr}.pth"
+                self.model.state_dict(), f=f"{checkpoint_path}/{model_name}_{itr}.pth"
             )
 
-            self.logger.report_text("Process are finished manually! Model saved into checkpoint")
+            self.logger.report_text(
+                "Process are finished manually! Model saved into checkpoint"
+            )
 
         # model saving after successfully train
-        torch.save(self.model.state_dict(), f=f"{checkpoint_path}/{model_name}_{optim_name}_tuned.pth")
+        torch.save(
+            self.model.state_dict(),
+            f=f"{checkpoint_path}/{model_name}_{optim_name}_tuned.pth",
+        )
 
         # logging training time
         end_time = time()
-        self.logger.report_text(f"Execution time: {(end_time - start_time) / 60} minutes")
+        self.logger.report_text(
+            f"Execution time: {(end_time - start_time) / 60} minutes"
+        )
 
-    def get_predictions_dataset(self, dataloader: DataLoader, threshold: float = 0.5) -> pd.DataFrame:
+    def get_predictions_dataset(
+        self, dataloader: DataLoader, threshold: float = 0.5
+    ) -> pd.DataFrame:
         """
-            Implements network performance evaluation process
-            :param dataloader: PyTorch standard DataLoader which contains custom dataset
-            :param threshold: filtering bound for predicted samples
+        Implements network performance evaluation process
+        :param dataloader: PyTorch standard DataLoader which contains custom dataset
+        :param threshold: filtering bound for predicted samples
         """
-        predictions = {
-            "image_id": [],
-            "boxes": [],
-            "IoU": []
-        }
+        predictions = {"image_id": [], "boxes": [], "IoU": []}
 
         # switching model into evaluation mode
         self.model.to(self.device)
@@ -189,7 +212,9 @@ class Experiment:
 
                     # iou computation for each predicted bbox
                     # torchvision.ops.box_iou returns Tensor after call
-                    tensor_iou = box_iou(torch.tensor(ground_truth), torch.tensor(box.reshape(-1, 4)))
+                    tensor_iou = box_iou(
+                        torch.tensor(ground_truth), torch.tensor(box.reshape(-1, 4))
+                    )
 
                     # tensor conversion into python dtype
                     iou = round(float(torch.max(tensor_iou)), 4)
@@ -201,14 +226,19 @@ class Experiment:
                     predictions["IoU"].append(iou)
 
                     draw.rectangle(xy=tuple(map(int, box)), outline="blue", width=2)
-                    draw.text(xy=(box[0], box[1]), text=f"IoU: {iou}", fill="black", stroke=0.2)
+                    draw.text(
+                        xy=(box[0], box[1]),
+                        text=f"IoU: {iou}",
+                        fill="black",
+                        stroke=0.2,
+                    )
 
                 # logging the image with predicted bounding boxes
                 self.logger.report_image(
                     title="image",
                     series=f"image sample: {image_id}",
                     iteration=itr,
-                    image=draw._image
+                    image=draw._image,
                 )
 
                 # scoring avg iou for image and logging it
@@ -216,7 +246,8 @@ class Experiment:
                     title="avg IoU (Jaccard index)",
                     series=f"avg IoU",
                     iteration=itr,
-                    value=sum(pred_objects_iou) / (len(output_boxes) if len(output_boxes) > 0 else 1)
+                    value=sum(pred_objects_iou)
+                    / (len(output_boxes) if len(output_boxes) > 0 else 1),
                 )
 
                 itr += 1
@@ -225,7 +256,7 @@ class Experiment:
 
     def execute(self) -> Union[pd.DataFrame, None]:
         """
-            Method for triggering pipeline execution
+        Method for triggering pipeline execution
         """
         self.logger.report_text(f"execution configuration: {self.config}")
 
@@ -235,7 +266,7 @@ class Experiment:
                 self.dataset,
                 batch_size=self.config.get("train_loader_batch", 1),
                 shuffle=False,
-                collate_fn=self.collate_fn
+                collate_fn=self.collate_fn,
             )
             self.train(dataloader=loader)
 
@@ -245,17 +276,21 @@ class Experiment:
                 self.dataset,
                 batch_size=self.config.get("eval_loader_batch", 1),
                 shuffle=False,
-                collate_fn=self.collate_fn
+                collate_fn=self.collate_fn,
             )
             return self.get_predictions_dataset(dataloader=loader)
 
-    def export_to_onnx(self, export_path: str = "models_history/models_onnx", model_name: str = "faster_rcnn_tuned") -> None:
+    def export_to_onnx(
+        self,
+        export_path: str = "models_history/models_onnx",
+        model_name: str = "faster_rcnn_tuned",
+    ) -> None:
         """
-            Converting current model into ONNX format
-            :param model_name: converted model file name
-            :param export_path: destination directory for converted model
+        Converting current model into ONNX format
+        :param model_name: converted model file name
+        :param export_path: destination directory for converted model
 
-            *required ONNX version: 1.16.1; pip install onnx=1.16.1
+        *required ONNX version: 1.16.1; pip install onnx=1.16.1
         """
         model_to_export = self.model
 
@@ -263,7 +298,9 @@ class Experiment:
         model_to_export.eval()
 
         # input template for ONNX converted network should be the same
-        input_tensor = torch.randn((4, 3, 800, 800), dtype=torch.float32, requires_grad=True)
+        input_tensor = torch.randn(
+            (4, 3, 800, 800), dtype=torch.float32, requires_grad=True
+        )
         # input_tensor = input_tensor.to(self.device)
 
         torch.onnx.export(
@@ -275,20 +312,24 @@ class Experiment:
             opset_version=11,
             input_names=["input"],
             output_names=["output"],
-            dynamo=False
+            dynamo=False,
         )
         self.logger.report_text("Model successfully exported into ONNX format")
 
     def export_to_bento(self, bento_name: str, tags: dict) -> bentoml.Model:
         """Saves model into BentoML"""
-        return bentoml.pytorch.save_model(name=bento_name, labels=tags, model=self.model)
+        return bentoml.pytorch.save_model(
+            name=bento_name, labels=tags, model=self.model
+        )
 
     def get_constants_from_config(self) -> tuple:
         """Parses given constants into tuple"""
 
         model = self.config.get("model_name", "model")
         optim = self.config.get("optim_name", "")
-        checkpoint_path = self.config.get("checkpoint_path", "models_history/models_torch")
+        checkpoint_path = self.config.get(
+            "checkpoint_path", "models_history/models_torch"
+        )
 
         num_epochs = self.config.get("num_epochs", 5)
 
