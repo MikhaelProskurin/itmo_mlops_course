@@ -9,26 +9,42 @@ with bentoml.importing():
     import torch
     from torchvision.transforms import v2
 
+
 @bentoml.service(
     resources={"cpu": "2"},
     traffic={"timeout": 10},
 )
 class SpyAircraftDetector:
+    """
+    Detects spy aircraft in images using a BentoML model."""
 
     # loading the fine-tuned model
     bento_model = bentoml.models.get("aircraft_detection_faster_rcnn:latest")
 
     def __init__(self):
-        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        """
+        Initializes the model with device, loads the BentoML model, and sets up image transforms.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
+        self.device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
         self.model = bentoml.pytorch.load_model(self.bento_model)
 
         # image transforms list
-        self.processor = v2.Compose([
-            v2.Resize((800, 800)),
-            v2.ToImage(),
-            v2.ToDtype(torch.float32, scale=True),
-            v2.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-        ])
+        self.processor = v2.Compose(
+            [
+                v2.Resize((800, 800)),
+                v2.ToImage(),
+                v2.ToDtype(torch.float32, scale=True),
+                v2.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            ]
+        )
 
     @bentoml.api
     async def predict(self, img: Image) -> Image:
@@ -67,7 +83,7 @@ class SpyAircraftDetector:
                 xy=(box[0], box[1]),
                 text=f"box score: {round(float(score), 4)}",
                 stroke_width=0.35,
-                fill="black"
+                fill="black",
             )
 
         return img
